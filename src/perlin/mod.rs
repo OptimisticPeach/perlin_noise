@@ -1,8 +1,5 @@
-mod random_2d;
 pub mod perlin {
     extern crate rand;
-
-    use perlin::random_2d::random_2d::randomizer_2d;
     use rand::Rng;
     use std;
     use std::cmp;
@@ -86,20 +83,6 @@ pub mod perlin {
         perlin[0..(size - 1)].to_vec()
     }
 
-    fn lerp_2d(
-        start_x: f32,
-        start_y: f32,
-        end_x: f32,
-        end_y: f32,
-        dist_x: u32,
-        current_x: u32,
-        dist_y: u32,
-        current_y: u32,
-    ) -> f32 {
-        return (lerp(start_x, end_x, dist_x, current_x) + lerp(start_y, end_y, dist_y, current_y))
-            / 2.0;
-    }
-
     pub fn fill_rand_2d(sizex: usize, sizey: usize) -> Vec<Vec<f32>> {
         let mut randoms: Vec<Vec<f32>> = Vec::new();
         for _ in 0..sizex {
@@ -113,11 +96,15 @@ pub mod perlin {
         randoms
     }
 
-    pub fn get_perlin_2d(sizex: usize, sizey: usize, depth: Option<u32>) -> (Vec<Vec<f32>>, randomizer_2d) {
+    pub fn get_perlin_2d(
+        sizex: usize,
+        sizey: usize,
+        depth: Option<u32>,
+    ) -> Vec<Vec<f32>> {
         let sizex = sizex + 2;
         let sizey = sizey + 2;
         let depth = depth.unwrap_or(std::u32::MAX);
-        let mut randoms = randomizer_2d::new(sizex, sizey);//fill_rand_2d(sizex, sizey);
+        let mut randoms = fill_rand_2d(sizex, sizey); //fill_rand_2d(sizex, sizey);
         let mut perlin: Vec<Vec<f32>> = vec![vec![0.0; sizey]; sizex];
 
         let sizex_log2 = (sizex as f32).log2();
@@ -175,15 +162,14 @@ pub mod perlin {
                         rand_indexes_y[(current_rand_index_y + 1) as usize] as u32;
 
                     for x in prev_rand_index_x..next_rand_index_x {
-
                         let top_left =
-                            randoms.get_at(prev_rand_index_x as usize, prev_rand_index_y as usize);
+                            randoms[prev_rand_index_x as usize][prev_rand_index_y as usize];
                         let top_right =
-                            randoms.get_at(next_rand_index_x as usize, prev_rand_index_y as usize);
+                            randoms[next_rand_index_x as usize][prev_rand_index_y as usize];
                         let bottom_left =
-                            randoms.get_at(prev_rand_index_x as usize, next_rand_index_y as usize);
+                            randoms[prev_rand_index_x as usize][next_rand_index_y as usize];
                         let bottom_right =
-                            randoms.get_at(next_rand_index_x as usize, next_rand_index_y as usize);
+                            randoms[next_rand_index_x as usize][next_rand_index_y as usize];
 
                         for y in prev_rand_index_y..next_rand_index_y {
                             let x_start = lerp(
@@ -230,6 +216,6 @@ pub mod perlin {
             perlin[i] = line;
         }
 
-        (perlin[0..(sizex - 1)].to_vec(), randoms)
+        perlin[0..(sizex - 1)].to_vec()
     }
 }
