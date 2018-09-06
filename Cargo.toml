@@ -1,0 +1,8 @@
+[package]
+name = "perlin_noise"
+version = "0.1.0"
+authors = ["OptimisticPeach <patrikbuhring@yahoo.com>"]
+
+[dependencies]
+rand = "0.5.5"
+image = "*"
