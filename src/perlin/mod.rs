@@ -1,9 +1,11 @@
+mod random_2d;
 pub mod perlin {
     extern crate rand;
     use rand::Rng;
     use std;
     use std::cmp;
     use std::f32;
+    use perlin::random_2d::random_2d::Randomizer2D;
 
     fn lerp(start: f32, end: f32, dist: u32, current: u32) -> f32 {
         let t: f32 = current as f32 / dist as f32;
@@ -101,37 +103,41 @@ pub mod perlin {
         sizey: usize,
         depth: Option<u32>,
     ) -> Vec<Vec<f32>> {
-        let sizex = sizex + 2;
-        let sizey = sizey + 2;
+        let size = cmp::max(sizex, sizey) - 1; //There's a bug that doesn't allow non-square perlin noise generation...
+                                               //But we can mitigate that by ignoring the values beyond the limits set,
+                                               //And using the random_2d struct to only generate necessary values at 
+                                               //The cost of using some memory
+
+        let x_larger = cmp::max(sizex, sizey) == sizex;
+
         let depth = depth.unwrap_or(std::u32::MAX);
-        let mut randoms = fill_rand_2d(sizex, sizey); //fill_rand_2d(sizex, sizey);
-        let mut perlin: Vec<Vec<f32>> = vec![vec![0.0; sizey]; sizex];
+        let mut randoms = Randomizer2D::new(size, size);
+        let mut perlin: Vec<Vec<f32>> = vec![vec![0.0; sizey + 1]; sizex + 1];
 
-        let sizex_log2 = (sizex as f32).log2();
-        let sizey_log2 = (sizex as f32).log2();
+        let size_log2 = (size as f32).log2();
 
-        let depth = if depth < cmp::min(sizex_log2.floor() as u32, sizey_log2.floor() as u32) {
+        let depth = if depth < size_log2.floor() as u32 {
             depth
         } else {
-            cmp::min(sizex_log2.floor() as u32, sizey_log2.floor() as u32)
+            size_log2.floor() as u32
         };
 
         let mut avg_factor = 0.0;
 
-        for depth_index in (0..depth).rev() {
-            let power = (depth_index as f32).exp2() as u32;
-            let power_recipr = 1.0 / ((depth - depth_index) as f32).exp2();
+        for octave_index in (0..depth).rev() {
+            let power = (octave_index as f32).exp2() as u32;
+            let power_recipr = 1.0 / ((depth - octave_index) as f32).exp2();
             avg_factor += power_recipr;
 
             let mut rand_indexes_x: Vec<u32> = Vec::new();
 
-            let rand_indexes_size_x = ((sizex as u32 / power) - 1) as u32;
+            let rand_indexes_size_x = ((size as u32 / power) - 1) as u32;
 
             for j in 0..rand_indexes_size_x {
                 rand_indexes_x.push(j * power);
             }
 
-            rand_indexes_x.push(sizex as u32 - 1);
+            rand_indexes_x.push(size as u32 - 1);
 
             if rand_indexes_size_x == 0 {
                 continue;
@@ -140,13 +146,13 @@ pub mod perlin {
             for current_rand_index_x in 0..(rand_indexes_size_x) {
                 let mut rand_indexes_y: Vec<u32> = Vec::new();
 
-                let rand_indexes_size_y = ((sizey as u32 / power) - 1) as u32;
+                let rand_indexes_size_y = ((size as u32 / power) - 1) as u32;
 
                 for j in 0..rand_indexes_size_y {
                     rand_indexes_y.push(j * power);
                 }
 
-                rand_indexes_y.push(sizey as u32 - 1);
+                rand_indexes_y.push(size as u32 - 1);
 
                 if rand_indexes_size_y == 0 {
                     continue;
@@ -162,16 +168,22 @@ pub mod perlin {
                         rand_indexes_y[(current_rand_index_y + 1) as usize] as u32;
 
                     for x in prev_rand_index_x..next_rand_index_x {
+                        if !x_larger && x > sizex as u32{
+                            continue;
+                        }
                         let top_left =
-                            randoms[prev_rand_index_x as usize][prev_rand_index_y as usize];
+                            randoms.get_at(prev_rand_index_x as usize, prev_rand_index_y as usize);
                         let top_right =
-                            randoms[next_rand_index_x as usize][prev_rand_index_y as usize];
+                            randoms.get_at(next_rand_index_x as usize, prev_rand_index_y as usize);
                         let bottom_left =
-                            randoms[prev_rand_index_x as usize][next_rand_index_y as usize];
+                            randoms.get_at(prev_rand_index_x as usize, next_rand_index_y as usize);
                         let bottom_right =
-                            randoms[next_rand_index_x as usize][next_rand_index_y as usize];
+                            randoms.get_at(next_rand_index_x as usize, next_rand_index_y as usize);
 
                         for y in prev_rand_index_y..next_rand_index_y {
+                            if x_larger && y > sizey as u32{
+                                continue;
+                            }
                             let x_start = lerp(
                                 top_left,
                                 bottom_left,
@@ -191,31 +203,18 @@ pub mod perlin {
                                     next_rand_index_x - prev_rand_index_x, //dist_x
                                     x - prev_rand_index_x,                 //current_x
                                 );
-
-                            // lerp_2d(
-                            //     randoms[prev_rand_index_x as usize][y as usize], //start_x
-                            //     randoms[x as usize][prev_rand_index_y as usize], //start_y
-                            //     randoms[next_rand_index_x as usize][y as usize], //end_x
-                            //     randoms[x as usize][next_rand_index_y as usize], //end_y
-                            //     next_rand_index_x - prev_rand_index_x,           //dist_x
-                            //     x - prev_rand_index_x,                           //current_x
-                            //     next_rand_index_y - prev_rand_index_y,           //dist_y
-                            //     y - prev_rand_index_y,                           //current_y
-                            // );
                         }
                     }
                 }
             }
         }
 
-        for i in 0..(sizex - 1) {
-            let mut line = vec![0.0; sizey];
-            for j in 0..(sizey - 1) {
-                line[j] = perlin[i][j] / avg_factor;
+        for i in 0..(sizex) {
+            for j in 0..(sizey) {
+                perlin[i][j] /= avg_factor;
             }
-            perlin[i] = line;
         }
 
-        perlin[0..(sizex - 1)].to_vec()
+        perlin
     }
 }
