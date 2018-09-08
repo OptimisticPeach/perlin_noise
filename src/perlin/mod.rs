@@ -103,16 +103,16 @@ pub mod perlin {
         sizey: usize,
         depth: Option<u32>,
     ) -> Vec<Vec<f32>> {
-        let size = cmp::max(sizex, sizey) - 1; //There's a bug that doesn't allow non-square perlin noise generation...
-                                               //But we can mitigate that by ignoring the values beyond the limits set,
-                                               //And using the random_2d struct to only generate necessary values at 
-                                               //The cost of using some memory
+        let size = cmp::max(sizex + 1, sizey + 1); //There's a bug that doesn't allow non-square perlin noise generation...
+                                                   //But we can mitigate that by ignoring the values beyond the limits set,
+                                                   //And using the random_2d struct to only generate necessary values at 
+                                                   //The cost of using some memory
 
         let x_larger = cmp::max(sizex, sizey) == sizex;
 
         let depth = depth.unwrap_or(std::u32::MAX);
         let mut randoms = Randomizer2D::new(size, size);
-        let mut perlin: Vec<Vec<f32>> = vec![vec![0.0; sizey + 1]; sizex + 1];
+        let mut perlin: Vec<Vec<f32>> = vec![vec![0.0; sizey]; sizex];
 
         let size_log2 = (size as f32).log2();
 

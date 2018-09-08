@@ -5,8 +5,8 @@ mod perlin;
 use image::{ImageBuffer};
 use perlin::perlin::{get_perlin_2d, fill_rand_2d};
 
-const IMG_SIZE_Y: u32 = 280;
-const IMG_SIZE_X: u32 = 500;
+const IMG_SIZE_Y: u32 = 1024;
+const IMG_SIZE_X: u32 = 1024;
 
 fn main() {
 	// let perlin_data = perlin::perlin::get_perlin(512, Some(8));
