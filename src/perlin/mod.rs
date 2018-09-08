@@ -168,7 +168,7 @@ pub mod perlin {
                         rand_indexes_y[(current_rand_index_y + 1) as usize] as u32;
 
                     for x in prev_rand_index_x..next_rand_index_x {
-                        if !x_larger && x > sizex as u32{
+                        if !x_larger && x >= sizex as u32{
                             continue;
                         }
                         let top_left =
@@ -181,7 +181,7 @@ pub mod perlin {
                             randoms.get_at(next_rand_index_x as usize, next_rand_index_y as usize);
 
                         for y in prev_rand_index_y..next_rand_index_y {
-                            if x_larger && y > sizey as u32{
+                            if x_larger && y >= sizey as u32{
                                 continue;
                             }
                             let x_start = lerp(
