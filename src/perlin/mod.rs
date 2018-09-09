@@ -1,11 +1,11 @@
 mod random_2d;
 pub mod perlin {
     extern crate rand;
+    use perlin::random_2d::random_2d::{access_2d_percent, Randomizer2D};
     use rand::Rng;
     use std;
     use std::cmp;
     use std::f32;
-    use perlin::random_2d::random_2d::Randomizer2D;
 
     fn lerp(start: f32, end: f32, dist: u32, current: u32) -> f32 {
         let t: f32 = current as f32 / dist as f32;
@@ -23,7 +23,6 @@ pub mod perlin {
     }
 
     pub fn get_perlin(size: usize, depth: Option<u32>) -> Vec<f32> {
-        let size = size + 2;
         let depth = depth.unwrap_or(std::u32::MAX);
         let randoms = fill_rand(size);
         let mut perlin: Vec<f32> = vec![0.0; size];
@@ -98,21 +97,95 @@ pub mod perlin {
         randoms
     }
 
-    pub fn get_perlin_2d(
-        sizex: usize,
-        sizey: usize,
-        depth: Option<u32>,
-    ) -> Vec<Vec<f32>> {
+    fn cubic(p0: f32, p1: f32, p2: f32, p3: f32, x: f32) -> f32 {
+        (-0.5 * p0 + 1.5 * p1 - 1.5 * p2 + 0.5 * p3) * (x * x * x)
+            + (p0 - 2.5 * p1 + 2.0 * p2 - 0.5 * p3) * (x * x)
+            + (-0.5 * p0 + 0.5 * p2) * x
+            + p1
+    }
+
+    fn bicubic(
+        p0: f32,
+        p1: f32,
+        p2: f32,
+        p3: f32,
+        p4: f32,
+        p5: f32,
+        p6: f32,
+        p7: f32,
+        p8: f32,
+        p9: f32,
+        p10: f32,
+        p11: f32,
+        p12: f32,
+        p13: f32,
+        p14: f32,
+        p15: f32,
+        x: f32,
+        y: f32,
+    ) -> f32 {
+        cubic(
+            cubic(p0, p1, p2, p3, y),     //Top
+            cubic(p4, p5, p6, p7, y),     //Second top
+            cubic(p8, p9, p10, p11, y),   //Second bottom
+            cubic(p12, p13, p14, p15, y), //Bottom
+            x,
+        )
+    }
+
+    fn easy_bicubic<T>(
+        source: &mut T,
+        distx: usize,
+        currentx: usize,
+        disty: usize,
+        currenty: usize,
+        x: usize,
+        y: usize
+    ) -> f32
+    where
+        T: access_2d_percent,
+    {
+        let left = x  as isize;
+        let right = (x + distx) as isize;
+        let bottom = (y + disty) as isize;
+        let top = y as isize;
+        let distx = distx as isize;
+        let disty = disty as isize;
+        let (width, height) = source.get_size();
+
+        bicubic(
+            source.get_at(left - distx, top - disty),
+            source.get_at(left, top - disty),
+            source.get_at(right, top - disty),
+            source.get_at(right + distx, top - disty),
+            source.get_at(left - distx, top),
+            source.get_at(left, top),
+            source.get_at(right, top),
+            source.get_at(right + distx, top),
+            source.get_at(left - distx, bottom),
+            source.get_at(left, bottom),
+            source.get_at(right, bottom),
+            source.get_at(right + distx, bottom),
+            source.get_at(left - distx, bottom + disty),
+            source.get_at(left, bottom + disty),
+            source.get_at(right, bottom + disty),
+            source.get_at(right + distx, bottom + disty),
+            currentx as f32 / distx as f32,
+            currenty as f32 / disty as f32,
+        )
+    }
+
+    pub fn get_perlin_2d(sizex: usize, sizey: usize, depth: Option<u32>) -> Vec<Vec<f32>> {
         let size = cmp::max(sizex + 1, sizey + 1); //There's a bug that doesn't allow non-square perlin noise generation...
                                                    //But we can mitigate that by ignoring the values beyond the limits set,
-                                                   //And using the random_2d struct to only generate necessary values at 
+                                                   //And using the random_2d struct to only generate necessary values at
                                                    //The cost of using some memory
 
         let x_larger = cmp::max(sizex, sizey) == sizex;
 
         let depth = depth.unwrap_or(std::u32::MAX);
         let mut randoms = Randomizer2D::new(size, size);
-        let mut perlin: Vec<Vec<f32>> = vec![vec![0.0; sizey]; sizex];
+        let mut perlin: Vec<Vec<f32>> = vec![vec![0.0; size]; size];
 
         let size_log2 = (size as f32).log2();
 
@@ -134,7 +207,7 @@ pub mod perlin {
             let rand_indexes_size_x = ((size as u32 / power) - 1) as u32;
 
             for j in 0..rand_indexes_size_x {
-                rand_indexes_x.push(j * power);
+                rand_indexes_x.push(j * power); 
             }
 
             rand_indexes_x.push(size as u32 - 1);
@@ -149,7 +222,7 @@ pub mod perlin {
                 let rand_indexes_size_y = ((size as u32 / power) - 1) as u32;
 
                 for j in 0..rand_indexes_size_y {
-                    rand_indexes_y.push(j * power);
+                    rand_indexes_y.push(j * power); //+1 to compensate for the bicubic
                 }
 
                 rand_indexes_y.push(size as u32 - 1);
@@ -168,41 +241,53 @@ pub mod perlin {
                         rand_indexes_y[(current_rand_index_y + 1) as usize] as u32;
 
                     for x in prev_rand_index_x..next_rand_index_x {
-                        if !x_larger && x >= sizex as u32{
+                        if !x_larger && x >= sizex as u32 {
                             continue;
                         }
-                        let top_left =
-                            randoms.get_at(prev_rand_index_x as usize, prev_rand_index_y as usize);
-                        let top_right =
-                            randoms.get_at(next_rand_index_x as usize, prev_rand_index_y as usize);
-                        let bottom_left =
-                            randoms.get_at(prev_rand_index_x as usize, next_rand_index_y as usize);
-                        let bottom_right =
-                            randoms.get_at(next_rand_index_x as usize, next_rand_index_y as usize);
+                        // let top_left =
+                        //     randoms.get_at(prev_rand_index_x as isize, prev_rand_index_y as isize);
+                        // let top_right =
+                        //     randoms.get_at(next_rand_index_x as isize, prev_rand_index_y as isize);
+                        // let bottom_left =
+                        //     randoms.get_at(prev_rand_index_x as isize, next_rand_index_y as isize);
+                        // let bottom_right =
+                        //     randoms.get_at(next_rand_index_x as isize, next_rand_index_y as isize);
 
                         for y in prev_rand_index_y..next_rand_index_y {
-                            if x_larger && y >= sizey as u32{
+                            if x_larger && y >= sizey as u32 {
                                 continue;
                             }
-                            let x_start = lerp(
-                                top_left,
-                                bottom_left,
-                                next_rand_index_y - prev_rand_index_y,
-                                y - prev_rand_index_y,
-                            );
-                            let x_end = lerp(
-                                top_right,
-                                bottom_right,
-                                next_rand_index_y - prev_rand_index_y,
-                                y - prev_rand_index_y,
-                            );
+
                             perlin[x as usize][y as usize] += power_recipr
-                                * lerp(
-                                    x_start,                               //start_x
-                                    x_end,                                 //end_y
-                                    next_rand_index_x - prev_rand_index_x, //dist_x
-                                    x - prev_rand_index_x,                 //current_x
-                                );
+                                * easy_bicubic(
+                                    &mut randoms,
+                                    (next_rand_index_x - prev_rand_index_x) as usize,
+                                    (x - prev_rand_index_x) as usize,
+                                    (next_rand_index_y - prev_rand_index_y) as usize,
+                                    (y - prev_rand_index_y) as usize,
+                                    prev_rand_index_x as usize,
+                                    prev_rand_index_y as usize
+                                )
+
+                            // let x_start = lerp(
+                            //     top_left,
+                            //     bottom_left,
+                            //     next_rand_index_y - prev_rand_index_y,
+                            //     y - prev_rand_index_y,
+                            // );
+                            // let x_end = lerp(
+                            //     top_right,
+                            //     bottom_right,
+                            //     next_rand_index_y - prev_rand_index_y,
+                            //     y - prev_rand_index_y,
+                            // );
+                            // perlin[x as usize][y as usize] += power_recipr
+                            //     * lerp(
+                            //         x_start,                               //start_x
+                            //         x_end,                                 //end_y
+                            //         next_rand_index_x - prev_rand_index_x, //dist_x
+                            //         x - prev_rand_index_x,                 //current_x
+                            //     );
                         }
                     }
                 }
