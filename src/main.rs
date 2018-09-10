@@ -1,3 +1,4 @@
+#![feature(iterator_flatten)]
 extern crate image;
 extern crate rand;
 mod perlin;
@@ -5,7 +6,7 @@ mod perlin;
 use image::{ImageBuffer};
 use perlin::perlin::{get_perlin_2d, fill_rand_2d};
 
-const IMG_SIZE_Y: u32 = 129;
+const IMG_SIZE_Y: u32 = 128;
 const IMG_SIZE_X: u32 = 256;
 
 fn main() {

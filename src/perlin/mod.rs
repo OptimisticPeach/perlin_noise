@@ -104,31 +104,12 @@ pub mod perlin {
             + p1
     }
 
-    fn bicubic(
-        p0: f32,
-        p1: f32,
-        p2: f32,
-        p3: f32,
-        p4: f32,
-        p5: f32,
-        p6: f32,
-        p7: f32,
-        p8: f32,
-        p9: f32,
-        p10: f32,
-        p11: f32,
-        p12: f32,
-        p13: f32,
-        p14: f32,
-        p15: f32,
-        x: f32,
-        y: f32,
-    ) -> f32 {
+    fn bicubic(source: &Vec<Vec<f32>>, x: f32, y: f32) -> f32 {
         cubic(
-            cubic(p0, p1, p2, p3, y),     //Top
-            cubic(p4, p5, p6, p7, y),     //Second top
-            cubic(p8, p9, p10, p11, y),   //Second bottom
-            cubic(p12, p13, p14, p15, y), //Bottom
+            cubic(source[0][0], source[1][0], source[2][0], source[3][0], y), //Tosource[
+            cubic(source[0][1], source[1][1], source[2][1], source[3][1], y), //Second tosource[
+            cubic(source[0][2], source[1][2], source[2][2], source[3][2], y), //Second bottom
+            cubic(source[0][3], source[1][3], source[2][3], source[3][3], y), //Bottom
             x,
         )
     }
@@ -140,39 +121,20 @@ pub mod perlin {
         disty: usize,
         currenty: usize,
         x: usize,
-        y: usize
+        y: usize,
     ) -> f32
     where
         T: access_2d_percent,
     {
-        let left = x  as isize;
+        let left = x as isize;
         let right = (x + distx) as isize;
         let bottom = (y + disty) as isize;
         let top = y as isize;
-        let distx = distx as isize;
-        let disty = disty as isize;
         let (width, height) = source.get_size();
-
-        bicubic(
-            source.get_at(left - distx, top - disty),
-            source.get_at(left, top - disty),
-            source.get_at(right, top - disty),
-            source.get_at(right + distx, top - disty),
-            source.get_at(left - distx, top),
-            source.get_at(left, top),
-            source.get_at(right, top),
-            source.get_at(right + distx, top),
-            source.get_at(left - distx, bottom),
-            source.get_at(left, bottom),
-            source.get_at(right, bottom),
-            source.get_at(right + distx, bottom),
-            source.get_at(left - distx, bottom + disty),
-            source.get_at(left, bottom + disty),
-            source.get_at(right, bottom + disty),
-            source.get_at(right + distx, bottom + disty),
-            currentx as f32 / distx as f32,
-            currenty as f32 / disty as f32,
-        )
+        let arr = &source.get_rect(x as isize - 1, y as isize - 1, 4, 4, distx, disty);//.into_iter().flatten().collect::<Vec<f32>>();
+        let distx = distx as f32;
+        let disty = disty as f32;
+        bicubic(arr, currentx as f32 / distx, currenty as f32 / disty)
     }
 
     pub fn get_perlin_2d(sizex: usize, sizey: usize, depth: Option<u32>) -> Vec<Vec<f32>> {
@@ -207,7 +169,7 @@ pub mod perlin {
             let rand_indexes_size_x = ((size as u32 / power) - 1) as u32;
 
             for j in 0..rand_indexes_size_x {
-                rand_indexes_x.push(j * power); 
+                rand_indexes_x.push(j * power);
             }
 
             rand_indexes_x.push(size as u32 - 1);
@@ -239,19 +201,18 @@ pub mod perlin {
                     let prev_rand_index_y = rand_indexes_y[current_rand_index_y as usize] as u32;
                     let next_rand_index_y =
                         rand_indexes_y[(current_rand_index_y + 1) as usize] as u32;
-
+                    // let top_left =
+                    //     randoms.get_at(prev_rand_index_x as isize, prev_rand_index_y as isize);
+                    // let top_right =
+                    //     randoms.get_at(next_rand_index_x as isize, prev_rand_index_y as isize);
+                    // let bottom_left =
+                    //     randoms.get_at(prev_rand_index_x as isize, next_rand_index_y as isize);
+                    // let bottom_right =
+                    //     randoms.get_at(next_rand_index_x as isize, next_rand_index_y as isize);
                     for x in prev_rand_index_x..next_rand_index_x {
                         if !x_larger && x >= sizex as u32 {
                             continue;
                         }
-                        // let top_left =
-                        //     randoms.get_at(prev_rand_index_x as isize, prev_rand_index_y as isize);
-                        // let top_right =
-                        //     randoms.get_at(next_rand_index_x as isize, prev_rand_index_y as isize);
-                        // let bottom_left =
-                        //     randoms.get_at(prev_rand_index_x as isize, next_rand_index_y as isize);
-                        // let bottom_right =
-                        //     randoms.get_at(next_rand_index_x as isize, next_rand_index_y as isize);
 
                         for y in prev_rand_index_y..next_rand_index_y {
                             if x_larger && y >= sizey as u32 {
@@ -266,7 +227,7 @@ pub mod perlin {
                                     (next_rand_index_y - prev_rand_index_y) as usize,
                                     (y - prev_rand_index_y) as usize,
                                     prev_rand_index_x as usize,
-                                    prev_rand_index_y as usize
+                                    prev_rand_index_y as usize,
                                 )
 
                             // let x_start = lerp(
