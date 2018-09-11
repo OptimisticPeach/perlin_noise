@@ -1,7 +1,7 @@
 mod random_2d;
 pub mod perlin {
     extern crate rand;
-    use perlin::random_2d::random_2d::{access_2d_percent, Randomizer2D};
+    use perlin::random_2d::random_2d::{Access2dPercent, Randomizer2D};
     use rand::Rng;
     use std;
     use std::cmp;
@@ -66,13 +66,12 @@ pub mod perlin {
                 let prev_rand_index = rand_indexes[current_rand_index as usize] as u32;
                 let next_rand_index = rand_indexes[(current_rand_index + 1) as usize] as u32;
                 for i in prev_rand_index..next_rand_index {
-                    perlin[i as usize] += power_recipr
-                        * lerp(
-                            randoms[prev_rand_index as usize],
-                            randoms[next_rand_index as usize],
-                            next_rand_index - prev_rand_index,
-                            i - prev_rand_index,
-                        );
+                    perlin[i as usize] += power_recipr * lerp(
+                        randoms[prev_rand_index as usize],
+                        randoms[next_rand_index as usize],
+                        next_rand_index - prev_rand_index,
+                        i - prev_rand_index,
+                    );
                 }
             }
         }
@@ -98,19 +97,47 @@ pub mod perlin {
     }
 
     fn cubic(p0: f32, p1: f32, p2: f32, p3: f32, x: f32) -> f32 {
-        (-0.5 * p0 + 1.5 * p1 - 1.5 * p2 + 0.5 * p3) * (x * x * x)
-            + (p0 - 2.5 * p1 + 2.0 * p2 - 0.5 * p3) * (x * x)
-            + (-0.5 * p0 + 0.5 * p2) * x
-            + p1
+        // (-0.5 * p0 + 1.5 * p1 - 1.5 * p2 + 0.5 * p3) * (x * x * x)
+        //     + (p0 - 2.5 * p1 + 2.0 * p2 - 0.5 * p3) * (x * x)
+        //     + (-0.5 * p0 + 0.5 * p2) * x
+        //     + p1
+
+        p1 + 0.5
+            * x
+            * (p2 - p0
+                + x * (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3 + x * (3.0 * (p1 - p2) + p3 - p0)))
+    }
+
+    fn cubic_hermite(a: f32, b: f32, c: f32, d: f32, t: f32) -> f32 {
+        let aa = -a / 2.0 + (3.0 * b) / 2.0 - (3.0 * c) / 2.0 + d / 2.0;
+        let bb = a - (5.0 * b) / 2.0 + 2.0 * c - d / 2.0;
+        let cc = -a / 2.0 + c / 2.0;
+        let dd = b;
+
+        aa * t * t * t + bb * t * t + cc * t + dd
+    }
+
+    fn clamp(x: f32, y: f32, z: f32) -> f32 {
+        if x > y {
+            x
+        } else if z < y {
+            z
+        } else {
+            y
+        }
     }
 
     fn bicubic(source: &Vec<Vec<f32>>, x: f32, y: f32) -> f32 {
-        cubic(
-            cubic(source[0][0], source[1][0], source[2][0], source[3][0], y), //Tosource[
-            cubic(source[0][1], source[1][1], source[2][1], source[3][1], y), //Second tosource[
-            cubic(source[0][2], source[1][2], source[2][2], source[3][2], y), //Second bottom
-            cubic(source[0][3], source[1][3], source[2][3], source[3][3], y), //Bottom
-            x,
+        clamp(
+            0.0,
+            cubic_hermite(
+                cubic_hermite(source[0][0], source[1][0], source[2][0], source[3][0], y), //Tosource[
+                cubic_hermite(source[0][1], source[1][1], source[2][1], source[3][1], y), //Second tosource[
+                cubic_hermite(source[0][2], source[1][2], source[2][2], source[3][2], y), //Second bottom
+                cubic_hermite(source[0][3], source[1][3], source[2][3], source[3][3], y), //Bottom
+                x,
+            ),
+            1.0,
         )
     }
 
@@ -124,24 +151,27 @@ pub mod perlin {
         y: usize,
     ) -> f32
     where
-        T: access_2d_percent,
+        T: Access2dPercent,
     {
-        let left = x as isize;
-        let right = (x + distx) as isize;
-        let bottom = (y + disty) as isize;
-        let top = y as isize;
-        let (width, height) = source.get_size();
-        let arr = &source.get_rect(x as isize - 1, y as isize - 1, 4, 4, distx, disty);//.into_iter().flatten().collect::<Vec<f32>>();
+        // let left = x as isize;
+        // let right = (x + distx) as isize;
+        // let bottom = (y + disty) as isize;
+        // let top = y as isize;
+        let arr = &source.get_rect(
+            x as isize - distx as isize,
+            y as isize - disty as isize,
+            4,
+            4,
+            distx,
+            disty,
+        ); //.into_iter().flatten().collect::<Vec<f32>>();
         let distx = distx as f32;
         let disty = disty as f32;
         bicubic(arr, currentx as f32 / distx, currenty as f32 / disty)
     }
 
     pub fn get_perlin_2d(sizex: usize, sizey: usize, depth: Option<u32>) -> Vec<Vec<f32>> {
-        let size = cmp::max(sizex + 1, sizey + 1); //There's a bug that doesn't allow non-square perlin noise generation...
-                                                   //But we can mitigate that by ignoring the values beyond the limits set,
-                                                   //And using the random_2d struct to only generate necessary values at
-                                                   //The cost of using some memory
+        let size = cmp::max(sizex + 1, sizey + 1);
 
         let x_larger = cmp::max(sizex, sizey) == sizex;
 
@@ -219,16 +249,15 @@ pub mod perlin {
                                 continue;
                             }
 
-                            perlin[x as usize][y as usize] += power_recipr
-                                * easy_bicubic(
-                                    &mut randoms,
-                                    (next_rand_index_x - prev_rand_index_x) as usize,
-                                    (x - prev_rand_index_x) as usize,
-                                    (next_rand_index_y - prev_rand_index_y) as usize,
-                                    (y - prev_rand_index_y) as usize,
-                                    prev_rand_index_x as usize,
-                                    prev_rand_index_y as usize,
-                                )
+                            perlin[x as usize][y as usize] += power_recipr * easy_bicubic(
+                                &mut randoms,
+                                (next_rand_index_x - prev_rand_index_x) as usize,
+                                (x - prev_rand_index_x) as usize,
+                                (next_rand_index_y - prev_rand_index_y) as usize,
+                                (y - prev_rand_index_y) as usize,
+                                prev_rand_index_x as usize,
+                                prev_rand_index_y as usize,
+                            )
 
                             // let x_start = lerp(
                             //     top_left,
