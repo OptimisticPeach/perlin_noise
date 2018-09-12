@@ -8,12 +8,12 @@ mod perlin;
 use image::{ImageBuffer};
 use perlin::perlin::{get_perlin_2d, fill_rand_2d};
 
-const IMG_SIZE_Y: u32 = 256;
-const IMG_SIZE_X: u32 = 256;
+const IMG_SIZE_Y: u32 = 515;
+const IMG_SIZE_X: u32 = 515;
 
 fn main() {
 
-	let perlin_data = get_perlin_2d(IMG_SIZE_X as usize, IMG_SIZE_Y as usize, Some(1));
+	let perlin_data = get_perlin_2d(IMG_SIZE_X as usize, IMG_SIZE_Y as usize, Some(2));
 
 	let mut buffer: Vec<u8> = Vec::new();
 

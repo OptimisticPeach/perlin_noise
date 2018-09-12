@@ -1,7 +1,9 @@
 mod random_2d;
+mod bicubic_data_randomizer;
 pub mod perlin {
     extern crate rand;
     use perlin::random_2d::random_2d::{Access2dPercent, Randomizer2D};
+    use perlin::bicubic_data_randomizer::bicubic_data_randomizer::BicubicDataRandomizer;
     use rand::Rng;
     use std;
     use std::cmp;
@@ -50,7 +52,7 @@ pub mod perlin {
 
             let mut rand_indexes: Vec<u32> = Vec::new();
 
-            let rand_indexes_size = ((size as u32 / power) - 1) as u32;
+            let rand_indexes_size = (size as u32 / power) as u32;
 
             for j in 0..rand_indexes_size {
                 rand_indexes.push(j * power);
@@ -127,22 +129,22 @@ pub mod perlin {
         }
     }
 
-    fn bicubic(source: &Vec<Vec<f32>>, x: f32, y: f32) -> f32 {
+    fn bicubic(source: &[f32; 16], x: f32, y: f32) -> f32 {
         clamp(
             0.0,
             cubic_hermite(
-                cubic_hermite(source[0][0], source[1][0], source[2][0], source[3][0], y), //Tosource[
-                cubic_hermite(source[0][1], source[1][1], source[2][1], source[3][1], y), //Second tosource[
-                cubic_hermite(source[0][2], source[1][2], source[2][2], source[3][2], y), //Second bottom
-                cubic_hermite(source[0][3], source[1][3], source[2][3], source[3][3], y), //Bottom
+                cubic_hermite(source[0], source[1], source[2], source[3], y), //Tosource[
+                cubic_hermite(source[4], source[5], source[6], source[7], y), //Second tosource[
+                cubic_hermite(source[8], source[9], source[10], source[11], y), //Second bottom
+                cubic_hermite(source[12], source[13], source[14], source[15], y), //Bottom
                 x,
             ),
             1.0,
         )
     }
 
-    fn easy_bicubic<T>(
-        source: &mut T,
+    fn easy_bicubic(
+        source: &mut BicubicDataRandomizer,
         distx: usize,
         currentx: usize,
         disty: usize,
@@ -150,18 +152,14 @@ pub mod perlin {
         x: usize,
         y: usize,
     ) -> f32
-    where
-        T: Access2dPercent,
     {
         // let left = x as isize;
         // let right = (x + distx) as isize;
         // let bottom = (y + disty) as isize;
         // let top = y as isize;
-        let arr = &source.get_rect(
-            x as isize - distx as isize,
-            y as isize - disty as isize,
-            4,
-            4,
+        let arr = &source.get_bicubic_dataset(
+            x,
+            y,
             distx,
             disty,
         ); //.into_iter().flatten().collect::<Vec<f32>>();
@@ -176,22 +174,23 @@ pub mod perlin {
         let x_larger = cmp::max(sizex, sizey) == sizex;
 
         let depth = depth.unwrap_or(std::u32::MAX);
-        let mut randoms = Randomizer2D::new(size, size);
+        let mut randoms = BicubicDataRandomizer::new(size, size);
         let mut perlin: Vec<Vec<f32>> = vec![vec![0.0; size]; size];
 
         let size_log2 = (size as f32).log2();
 
-        let depth = if depth < size_log2.floor() as u32 {
+        let max_depth = size_log2.floor() as u32;
+        let depth_start = if depth < max_depth {
             depth
         } else {
-            size_log2.floor() as u32
+            max_depth
         };
 
         let mut avg_factor = 0.0;
 
-        for octave_index in (0..depth).rev() {
+        for octave_index in (depth_start..max_depth).rev() {
             let power = (octave_index as f32).exp2() as u32;
-            let power_recipr = 1.0 / ((depth - octave_index) as f32).exp2();
+            let power_recipr = 1.0 / ((max_depth - octave_index) as f32).exp2();
             avg_factor += power_recipr;
 
             let mut rand_indexes_x: Vec<u32> = Vec::new();
