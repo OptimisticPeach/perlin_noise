@@ -8,6 +8,7 @@ pub mod perlin {
     use std;
     use std::cmp;
     use std::f32;
+    use std::ops::Range;
 
     fn lerp(start: f32, end: f32, dist: u32, current: u32) -> f32 {
         let t: f32 = current as f32 / dist as f32;
@@ -179,23 +180,26 @@ pub mod perlin {
 
         let size_log2 = (size as f32).log2();
 
-        let max_depth = size_log2.floor() as u32;
-        let depth_start = if depth < max_depth {
+        let max_depth = size_log2.ceil() as u32;
+        let depth = if depth < max_depth {
             depth
         } else {
             max_depth
         };
 
+        let depth_power_list = (0..=depth)        
+        .map(|x| (((max_depth - x) as f32)
+        .exp2() as u32, (x as f32).exp2()));
+
         let mut avg_factor = 0.0;
 
-        for octave_index in (depth_start..max_depth).rev() {
-            let power = (octave_index as f32).exp2() as u32;
-            let power_recipr = 1.0 / ((max_depth - octave_index) as f32).exp2();
+        for (power, power_recipr) in depth_power_list {
+            
             avg_factor += power_recipr;
 
             let mut rand_indexes_x: Vec<u32> = Vec::new();
 
-            let rand_indexes_size_x = ((size as u32 / power) - 1) as u32;
+            let rand_indexes_size_x = (size as f32 / power as f32) as u32;
 
             for j in 0..rand_indexes_size_x {
                 rand_indexes_x.push(j * power);
@@ -210,7 +214,7 @@ pub mod perlin {
             for current_rand_index_x in 0..(rand_indexes_size_x) {
                 let mut rand_indexes_y: Vec<u32> = Vec::new();
 
-                let rand_indexes_size_y = ((size as u32 / power) - 1) as u32;
+                let rand_indexes_size_y = (size as f32 / power as f32) as u32;
 
                 for j in 0..rand_indexes_size_y {
                     rand_indexes_y.push(j * power); //+1 to compensate for the bicubic
@@ -288,7 +292,8 @@ pub mod perlin {
                 perlin[i][j] /= avg_factor;
             }
         }
-
+        println!("{:?}", randoms.len());
+        println!("{:?}", randoms.get_at(size / 2, size / 2));
         perlin
     }
 }
