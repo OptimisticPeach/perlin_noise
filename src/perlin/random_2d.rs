@@ -4,46 +4,43 @@ pub mod random_2d {
 
     pub struct Randomizer2D {
         data: Vec<Vec<f32>>,
-        width_main: isize,
-        height_main: isize,
+        width_main: usize,
+        height_main: usize,
     }
 
     pub trait Access2dPercent {
-        fn get_at(&mut self, x: isize, y: isize) -> f32;
+        fn get_at(&mut self, x: usize, y: usize) -> f32;
         fn get_size(&self) -> (usize, usize);
-        fn get_line(&mut self, x: isize, y: isize, len: usize, direction_is_x: bool, dist: usize) -> Vec<f32>;
-        fn get_rect(&mut self, x: isize, y: isize, width: usize, height: usize, distx: usize, disty: usize) -> Vec<Vec<f32>>;
+        fn get_line(&mut self, x: usize, y: usize, len: usize, direction_is_x: bool, dist: usize) -> Vec<f32>;
+        fn get_rect(&mut self, x: usize, y: usize, width: usize, height: usize, distx: usize, disty: usize) -> Vec<Vec<f32>>;
     }
     impl Access2dPercent for Randomizer2D {
-        fn get_at(&mut self, x: isize, y: isize) -> f32 {
+        fn get_at(&mut self, x: usize, y: usize) -> f32 {
 
-            let newx = x + self.width_main;
-            let newy = y + self.height_main;
-
-            if self.data[newx as usize][newy as usize] < 0.0 {
-                self.data[newx as usize][newy as usize] = rand::thread_rng().gen_range(0.0, 1.0);
+            if self.data[x][y] < 0.0 {
+                self.data[x][y] = rand::thread_rng().gen_range(0.0, 1.0);
             }
-            self.data[newx as usize][newy as usize]
+            self.data[x][y]
         }
         fn get_size(&self) -> (usize, usize) {
             (self.data.len(), self.data[0].len())
         }
-        fn get_line(&mut self, x: isize, y: isize, len: usize, direction_is_x: bool, dist: usize) -> Vec<f32> {
+        fn get_line(&mut self, x: usize, y: usize, len: usize, direction_is_x: bool, dist: usize) -> Vec<f32> {
             let mut line: Vec<f32> = Vec::new();
-            for i in 0..len as isize {
+            for i in 0..len as usize {
                 if direction_is_x {
-                    line.push(self.get_at(x + i * dist as isize, y));
+                    line.push(self.get_at(x + i * dist as usize, y));
                 }
                 else{
-                    line.push(self.get_at(x, y + i * dist as isize));
+                    line.push(self.get_at(x, y + i * dist as usize));
                 }
             }
             line
         }
-        fn get_rect(&mut self, x: isize, y: isize, width: usize, height: usize, distx: usize, disty: usize) -> Vec<Vec<f32>> {
+        fn get_rect(&mut self, x: usize, y: usize, width: usize, height: usize, distx: usize, disty: usize) -> Vec<Vec<f32>> {
             let mut rect: Vec<Vec<f32>> = Vec::new();
-            for i in 0..width as isize {
-                rect.push(self.get_line(x + i * distx as isize, y, height, false, disty));
+            for i in 0..width as usize {
+                rect.push(self.get_line(x + i * distx as usize, y, height, false, disty));
             }
             rect
         }
@@ -51,13 +48,13 @@ pub mod random_2d {
     impl Randomizer2D {
         pub fn new(width: usize, height: usize) -> Randomizer2D {
             Randomizer2D {
-                data: vec![vec![-1.0; height * 3]; width * 3],
-                width_main: width as isize,
-                height_main: height as isize,
+                data: vec![vec![-1.0; height]; width],
+                width_main: width as usize,
+                height_main: height as usize,
             }
         }
 
-        pub fn is_accessed(&self, x: isize, y: isize) -> bool {
+        pub fn is_accessed(&self, x: usize, y: usize) -> bool {
             let x = (x + self.width_main) as usize;
             let y = (y + self.height_main) as usize;
             self.data[x][y] >= 0.0
