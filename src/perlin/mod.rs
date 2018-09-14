@@ -187,7 +187,7 @@ pub mod perlin {
 
         for i in 0..(sizex) {
             for j in 0..(sizey) {
-                perlin[i][j] /= avg_factor * 0.25;
+                perlin[i][j] /= avg_factor;
             }
         }
 

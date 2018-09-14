@@ -7,7 +7,8 @@ mod perlin;
 
 use image::{ImageBuffer};
 use perlin::perlin::{get_perlin_2d, fill_rand_2d};
-use perlin::interpolators::*;
+use perlin::interpolators::interpolators::*;
+use std::time::Instant;
 
 const IMG_SIZE_Y: u32 = 2048;
 const IMG_SIZE_X: u32 = 1024;
@@ -30,5 +31,6 @@ fn main() {
 	let img = ImageBuffer::<image::Luma<u8>, std::vec::Vec<u8>>::from_vec(IMG_SIZE_Y, IMG_SIZE_X, buffer).unwrap();
 
 	img.save("perlin.png").unwrap();
+
 }
    
