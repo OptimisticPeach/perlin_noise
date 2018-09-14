@@ -1,11 +1,9 @@
 mod random_2d;
-mod bicubic_data_randomizer;
 pub mod interpolators;
 //mod interpolators;
 pub mod perlin {
     extern crate rand;
     use perlin::random_2d::random_2d::{Access2dPercent, Randomizer2D};
-    use perlin::bicubic_data_randomizer::bicubic_data_randomizer::BicubicDataRandomizer;
     use rand::Rng;
     use std;
     use std::cmp;
@@ -70,8 +68,7 @@ pub mod perlin {
                     perlin[i as usize] += power_recipr * lerp(
                         randoms[prev_rand_index as usize],
                         randoms[next_rand_index as usize],
-                        next_rand_index - prev_rand_index,
-                        i - prev_rand_index,
+                        ((i - prev_rand_index) as f32) / ((next_rand_index - prev_rand_index) as f32)
                     );
                 }
             }
@@ -105,7 +102,6 @@ pub mod perlin {
         let x_larger = cmp::max(sizex, sizey) == sizex;
 
         let depth = depth.unwrap_or(std::u32::MAX);
-        // let mut randoms = BicubicDataRandomizer::new(size, size);
         let mut randoms = Randomizer2D::new(size, size);
         let mut perlin: Vec<Vec<f32>> = vec![vec![0.0; size]; size];
 
@@ -148,7 +144,7 @@ pub mod perlin {
                 let rand_indexes_size_y = (size as f32 / power as f32) as u32;
 
                 for j in 0..rand_indexes_size_y {
-                    rand_indexes_y.push(j * power); //+1 to compensate for the bicubic
+                    rand_indexes_y.push(j * power);
                 }
 
                 rand_indexes_y.push(size as u32 - 1);
@@ -165,14 +161,6 @@ pub mod perlin {
                     let prev_rand_index_y = rand_indexes_y[current_rand_index_y as usize] as u32;
                     let next_rand_index_y =
                         rand_indexes_y[(current_rand_index_y + 1) as usize] as u32;
-                    // let top_left =
-                    //     randoms.get_at(prev_rand_index_x as isize, prev_rand_index_y as isize);
-                    // let top_right =
-                    //     randoms.get_at(next_rand_index_x as isize, prev_rand_index_y as isize);
-                    // let bottom_left =
-                    //     randoms.get_at(prev_rand_index_x as isize, next_rand_index_y as isize);
-                    // let bottom_right =
-                    //     randoms.get_at(next_rand_index_x as isize, next_rand_index_y as isize);
                     for x in prev_rand_index_x..next_rand_index_x {
                         if !x_larger && x >= sizex as u32 {
                             continue;
@@ -191,36 +179,6 @@ pub mod perlin {
                                 ((x - prev_rand_index_x) as f32) / ((next_rand_index_x - prev_rand_index_x) as f32),
                                 ((y - prev_rand_index_y) as f32) / ((next_rand_index_y - prev_rand_index_y) as f32)
                             );
-
-                            // perlin[x as usize][y as usize] += power_recipr * easy_bicubic(
-                            //     &mut randoms,
-                            //     (next_rand_index_x - prev_rand_index_x) as usize,
-                            //     (x - prev_rand_index_x) as usize,
-                            //     (next_rand_index_y - prev_rand_index_y) as usize,
-                            //     (y - prev_rand_index_y) as usize,
-                            //     prev_rand_index_x as usize,
-                            //     prev_rand_index_y as usize,
-                            // )
-
-                            // let x_start = lerp(
-                            //     top_left,
-                            //     bottom_left,
-                            //     next_rand_index_y - prev_rand_index_y,
-                            //     y - prev_rand_index_y,
-                            // );
-                            // let x_end = lerp(
-                            //     top_right,
-                            //     bottom_right,
-                            //     next_rand_index_y - prev_rand_index_y,
-                            //     y - prev_rand_index_y,
-                            // );
-                            // perlin[x as usize][y as usize] += power_recipr
-                            //     * lerp(
-                            //         x_start,                               //start_x
-                            //         x_end,                                 //end_y
-                            //         next_rand_index_x - prev_rand_index_x, //dist_x
-                            //         x - prev_rand_index_x,                 //current_x
-                            //     );
                         }
                     }
                 }
@@ -229,21 +187,9 @@ pub mod perlin {
 
         for i in 0..(sizex) {
             for j in 0..(sizey) {
-                perlin[i][j] /= avg_factor / 4.0;
+                perlin[i][j] /= avg_factor * 0.25;
             }
         }
-
-        let mut max = 0.0;
-
-        for i in 0..(sizex) {
-            for j in 0..(sizey) {
-                if max < perlin[i][j]{
-                    max = perlin[i][j];
-                }
-            }
-        }
-        
-        println!("{}", max);
 
         perlin
     }

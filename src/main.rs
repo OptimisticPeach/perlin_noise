@@ -30,11 +30,5 @@ fn main() {
 	let img = ImageBuffer::<image::Luma<u8>, std::vec::Vec<u8>>::from_vec(IMG_SIZE_Y, IMG_SIZE_X, buffer).unwrap();
 
 	img.save("perlin.png").unwrap();
-	// let c = 20000000;
-	// let start = std::time::Instant::now();
-	// let mut v = vec![0.0; c];
-	// for i in 0..c
-	// {v[i] = interpolators::inv_sqrt(16.0);}
-	// println!("{}", start.elapsed().as_secs() as f32 + start.elapsed().subsec_nanos() as f32 / 1_000_000_000.0);
 }
    
