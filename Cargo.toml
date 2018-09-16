@@ -1,5 +1,4 @@
 [package]
-description = "..."
 name = "perlin_noise"
 version = "0.1.0"
 authors = ["OptimisticPeach <optimistic.peach@outlook.com>"]
@@ -24,5 +23,12 @@ keywords = ["perlin-noise"]
 categories = ["algorithms"]
 
 [dependencies]
-rand = "0.5.5"
 image = "*"
+
+[dependencies.rand]
+version = "0.5.5"
+
+
+[lib]
+name = "perlin_noise"
+path = "src/perlin/mod.rs"
